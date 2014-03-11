@@ -67,34 +67,54 @@ public class BayesClassifier {
 
 	public static void NaiveBayes(Attributes train_attributes, Examples train_examples, Examples test_examples, String first_class_value, String second_class_value)
 	{
-		double first_class_prob = LaplaceEstimate(train_examples.GetFirstClassCount(), train_examples.GetExamplesCount());
-		double second_class_prob = LaplaceEstimate(train_examples.GetSecondClassCount(), train_examples.GetExamplesCount());
+		Attribute attributes_walker = train_attributes.GetAttributesHead();
+		while(attributes_walker != null)
+		{
+			System.out.println(attributes_walker.AttributeName() + " class");
+			
+			attributes_walker = attributes_walker.GetNext();
+		}
+		System.out.println();
+		
+		double first_class_prob = LaplaceEstimate(train_examples.GetFirstClassCount(), train_examples.GetExamplesCount(), 2);
+		double second_class_prob = LaplaceEstimate(train_examples.GetSecondClassCount(), train_examples.GetExamplesCount(), 2);
+		int correct = 0;
 		
 		Example examples_walker = test_examples.GetExamplesHead();
 		Value value_walker = null;
 		double first_cond_prob = first_class_prob, second_cond_prob = second_class_prob;
-		double temp_a = 0, temp_b = 0;
 		
 		while(examples_walker != null)
 		{
 			value_walker = examples_walker.GetValuesHead();
 			while(value_walker != null)
 			{
-				temp_a = GetConditionalProbablity(train_examples, value_walker, first_class_value);
-				temp_b = GetConditionalProbablity(train_examples, value_walker, second_class_value);
-				
-				first_cond_prob *= temp_a;
-				second_cond_prob *= temp_b;
+				first_cond_prob *= GetConditionalProbablity(train_examples, value_walker, first_class_value);
+				second_cond_prob *= GetConditionalProbablity(train_examples, value_walker, second_class_value);
 				
 				value_walker = value_walker.GetNext();
 			}
 
 			if(first_cond_prob > second_cond_prob)
-				System.out.println((double)first_cond_prob/(double)(first_cond_prob + second_cond_prob));
+			{
+				if(examples_walker.GetClassValue().equals(first_class_value))
+					correct++;
+				System.out.println(first_class_value + " " + examples_walker.GetClassValue() +  " " + (double)first_cond_prob/(double)(first_cond_prob + second_cond_prob));
+			}
 			else
-				System.out.println((double)second_cond_prob/(double)(first_cond_prob + second_cond_prob));
+			{
+				if(examples_walker.GetClassValue().equals(second_class_value))
+					correct++;
+				System.out.println(second_class_value +  " " + examples_walker.GetClassValue() +  " " + (double)second_cond_prob/(double)(first_cond_prob + second_cond_prob));
+			}
+			
+			first_cond_prob = first_class_prob;
+			second_cond_prob = second_class_prob;
 			examples_walker = examples_walker.GetNext();
 		}
+		
+		System.out.println();
+		System.out.println(correct);
 	}
 	
 	public static void TanBayes(Attributes train_attributes, Examples train_examples, Examples test_examples, String first_class_value, String second_class_value)
@@ -113,7 +133,7 @@ public class BayesClassifier {
 			{
 				Value value_walker = example_walker.GetValuesHead();
 				
-				while(!value_walker.GetAttribute().equals(value.GetAttribute()))
+				while(!value_walker.GetAttribute().AttributeName().equals(value.GetAttribute().AttributeName()))
 				{
 					value_walker = value_walker.GetNext();
 				}
@@ -127,11 +147,11 @@ public class BayesClassifier {
 			example_walker = example_walker.GetNext();
 		}
 		
-		return LaplaceEstimate(instances, total);
+		return LaplaceEstimate(instances, total, value.GetAttribute().GetFeatureCount());
 	}
 	
-	public static double LaplaceEstimate(int numerator, int denominator)
+	public static double LaplaceEstimate(int numerator, int denominator, int pseudocount)
 	{
-		return (double)(numerator + 1)/(double)(denominator + 1);
+		return (double)(numerator + 1)/(double)(denominator + pseudocount);
 	}
 }

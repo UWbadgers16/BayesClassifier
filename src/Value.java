@@ -2,13 +2,13 @@
 //value class
 public class Value 
 {
-	private String attribute = null;
+	private Attribute attribute = null;
 	private String value = null;
 	private Value next = null;
 	private Value prev = null;
 	
 	//constructor initializes value string and related attribute
-	public Value(String value, String attribute)
+	public Value(String value, Attribute attribute)
 	{
 		this.value = value;
 		this.attribute = attribute;
@@ -45,13 +45,13 @@ public class Value
 	}
 	
 	//get attribute
-	public String GetAttribute()
+	public Attribute GetAttribute()
 	{
 		return attribute;
 	}
 	
 	//set attribute
-	public void SetAttribute(String attribute)
+	public void SetAttribute(Attribute attribute)
 	{
 		this.attribute = attribute;
 	}

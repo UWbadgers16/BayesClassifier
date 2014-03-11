@@ -11,7 +11,7 @@ public class Example
 	private Value held_value;
 	
 	//add a value
-	public void AddValues(String value, String attribute)
+	public void AddValues(String value, Attribute attribute)
 	{
 		Value temp = new Value(value, attribute);
 		if(values_head == null)
