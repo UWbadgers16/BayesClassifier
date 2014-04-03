@@ -119,7 +119,31 @@ public class BayesClassifier {
 	
 	public static void TanBayes(Attributes train_attributes, Examples train_examples, Examples test_examples, String first_class_value, String second_class_value)
 	{
+		Attribute attribute_walker = train_attributes.GetAttributesHead();
+		BayesNode[] tan_nodes = new BayesNode[train_attributes.GetAttributesCount()];
+		int index = 0;
 		
+		while(attribute_walker != null)
+		{
+			BayesNode tan_node = new BayesNode(train_attributes.GetAttributesCount() - 1);
+			tan_nodes[index] = tan_node;
+			
+			Attribute temp = train_attributes.GetAttributesHead();
+			while(temp != null)
+			{
+				
+				temp = temp.GetNext();
+			}
+			
+			attribute_walker = attribute_walker.GetNext();
+		}
+	}
+	
+	public double MutualInformation(Attribute one, Attribute two, String first_class_value, String second_class_value)
+	{
+		double mutual_information = 0;
+		
+		return mutual_information;
 	}
 	
 	public static double GetConditionalProbablity(Examples train_examples, Value value, String class_value)
