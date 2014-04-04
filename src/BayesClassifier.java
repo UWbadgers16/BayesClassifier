@@ -9,7 +9,7 @@ import java.util.Random;
 public class BayesClassifier 
 {
 	static CPT[] cpts = null;
-	static int cpt_index = 0;
+	static int cpts_index = 0;
 	static Attributes train_attributes = null;
 	static String first_class_value = null, second_class_value = null;
 	static double first_class_prob = 0, second_class_prob = 0;
@@ -50,19 +50,26 @@ public class BayesClassifier
 					second_class_value = train_parser.GetSecondClassValue();
 					first_class_prob = LaplaceEstimate(train_examples.GetFirstClassCount(), train_examples.GetExamplesCount(), 2);
 					second_class_prob = LaplaceEstimate(train_examples.GetSecondClassCount(), train_examples.GetExamplesCount(), 2);
-					String verbosity = null;
+					boolean verbosity = false, learning_curve = false;
 					
-					if(args.length == 5)
-						verbosity = args[4];
-					else
-						verbosity = null;
-					
-					if(args.length >= 4)
+					if(args.length == 4)
 					{
-						if(args[3].toLowerCase().equals("learning_curve"))
-						{
-							LearningCurve(train_examples, test_examples, type, verbosity);
-						}
+						if(args[3].toLowerCase().equals("v"))
+							verbosity = true;
+						else if(args[3].toLowerCase().equals("learning_curve"))
+							learning_curve = true;
+					}
+					else if(args.length == 5)
+					{
+						if(args[3].toLowerCase().equals("v") || args[4].toLowerCase().equals("v"))
+							verbosity = true;
+						if(args[3].toLowerCase().equals("learning_curve") || args[4].toLowerCase().equals("learning_curve"))
+							learning_curve = true;
+					}
+					
+					if(learning_curve)
+					{
+						LearningCurve(train_examples, test_examples, type, verbosity);
 					}
 					else
 					{
@@ -89,7 +96,7 @@ public class BayesClassifier
 		//input missing
 		catch(ArrayIndexOutOfBoundsException oob)
 		{
-			System.out.println("Usage: bayes <train-set-file> <test-set-file> <n|t> <v>");
+			System.out.println("Usage: bayes <train-set-file> <test-set-file> <n|t> <v> <learning_curve>");
 		}
 	}
 	
@@ -145,7 +152,7 @@ public class BayesClassifier
 		return correct;
 	}
 
-	private static int TanBayes(Examples train_examples, Examples test_examples, String verbose)
+	private static int TanBayes(Examples train_examples, Examples test_examples, boolean verbose)
 	{
 		cpts = new CPT[train_attributes.GetAttributesCount()];
 		Attribute attribute_walker = train_attributes.GetAttributesHead();
@@ -181,8 +188,12 @@ public class BayesClassifier
 		}
 		
 		BayesNode root = PrimMST(tan_nodes);
-		if(verbose != null && verbose.toLowerCase().equals("v"))
+		if(verbose)
+		{
+			System.out.println("Maximum spanning tree from Prim's algorithm");
 			PrintTANTree(root, 0);
+			System.out.println();
+		}
 		BayesNode class_node = new BayesNode();
 		class_node.type = BayesNode.Type.CLASS;
 		GetCPTs(train_examples, root, null);
@@ -323,65 +334,72 @@ public class BayesClassifier
 	
 	private static void GetCPTs(Examples train_examples, BayesNode tan_node, BayesNode parent)
 	{
-		CPT cpt = null;
-		int index = 0;
-		Feature tan_node_walker = tan_node.GetAttribute().GetFeaturesHead();
-		
-		if(parent == null)
+		try
 		{
-			cpt = new CPT(tan_node.GetAttribute(), null, tan_node.GetAttribute().GetFeatureCount() * 2);
+			CPT cpt = null;
+			int index = 0;
+			Feature tan_node_walker = tan_node.GetAttribute().GetFeaturesHead();
 			
-			while(tan_node_walker != null)
+			if(parent == null)
 			{
-				String class_value = first_class_value;
-				for(int i = 0; i < 2; i++)
-				{
-					CPTEntry cpt_entry = new CPTEntry(tan_node_walker, null, class_value, GetConditionalProbablity(train_examples, null, null, tan_node_walker, null, class_value, 3));
-					cpt.type = CPT.Type.NO_PARENT;
-					cpt.AddEntry(cpt_entry, index);
-					index++;
-					class_value = second_class_value;
-				}
+				cpt = new CPT(tan_node.GetAttribute(), null, tan_node.GetAttribute().GetFeatureCount() * 2);
 				
-				tan_node_walker = tan_node_walker.GetNext();
-			}
-		}
-		else
-		{
-			cpt = new CPT(tan_node.GetAttribute(), parent.GetAttribute(), tan_node.GetAttribute().GetFeatureCount() * parent.GetAttribute().GetFeatureCount() * 2);
-			
-			while(tan_node_walker != null)
-			{
-				Feature parent_walker = parent.GetAttribute().GetFeaturesHead();
-				
-				while(parent_walker != null)
+				while(tan_node_walker != null)
 				{
 					String class_value = first_class_value;
 					for(int i = 0; i < 2; i++)
 					{
-						CPTEntry cpt_entry = new CPTEntry(tan_node_walker, parent_walker, class_value, GetConditionalProbablity(train_examples, null, null, tan_node_walker, parent_walker, class_value, 4));
-						cpt.type = CPT.Type.PARENT;
+						CPTEntry cpt_entry = new CPTEntry(tan_node_walker, null, class_value, GetConditionalProbablity(train_examples, null, null, tan_node_walker, null, class_value, 3));
+						cpt.type = CPT.Type.NO_PARENT;
 						cpt.AddEntry(cpt_entry, index);
 						index++;
 						class_value = second_class_value;
 					}
 					
-					parent_walker = parent_walker.GetNext();
+					tan_node_walker = tan_node_walker.GetNext();
 				}
+			}
+			else
+			{
+				cpt = new CPT(tan_node.GetAttribute(), parent.GetAttribute(), tan_node.GetAttribute().GetFeatureCount() * parent.GetAttribute().GetFeatureCount() * 2);
 				
-				tan_node_walker = tan_node_walker.GetNext();
+				while(tan_node_walker != null)
+				{
+					Feature parent_walker = parent.GetAttribute().GetFeaturesHead();
+					
+					while(parent_walker != null)
+					{
+						String class_value = first_class_value;
+						for(int i = 0; i < 2; i++)
+						{
+							CPTEntry cpt_entry = new CPTEntry(tan_node_walker, parent_walker, class_value, GetConditionalProbablity(train_examples, null, null, tan_node_walker, parent_walker, class_value, 4));
+							cpt.type = CPT.Type.PARENT;
+							cpt.AddEntry(cpt_entry, index);
+							index++;
+							class_value = second_class_value;
+						}
+						
+						parent_walker = parent_walker.GetNext();
+					}
+					
+					tan_node_walker = tan_node_walker.GetNext();
+				}
+			}
+			
+			cpts[cpts_index] = cpt;
+			cpts_index++;
+			
+			Edge edge_walker = tan_node.GetEdges().GetEdgesHead();
+			
+			while(edge_walker != null)
+			{
+				GetCPTs(train_examples, edge_walker.GetChild(), tan_node);
+				edge_walker = edge_walker.GetNext();
 			}
 		}
-		
-		cpts[cpt_index] = cpt;
-		cpt_index++;
-		
-		Edge edge_walker = tan_node.GetEdges().GetEdgesHead();
-		
-		while(edge_walker != null)
+		catch(ArrayIndexOutOfBoundsException e)
 		{
-			GetCPTs(train_examples, edge_walker.GetChild(), tan_node);
-			edge_walker = edge_walker.GetNext();
+			System.out.println(e.getMessage());
 		}
 	}
 	
@@ -743,7 +761,7 @@ public class BayesClassifier
 	}
 	
 	//print off learning curve information
-	private static void LearningCurve(Examples train_examples, Examples test_examples, String type, String verbose)
+	private static void LearningCurve(Examples train_examples, Examples test_examples, String type, boolean verbose)
 	{
 		double average = 0, accuracy = 0, min = 1, max = 0;
 		double sum = 0, count = 0;
@@ -753,6 +771,7 @@ public class BayesClassifier
 		//training size trees of 25
 		for(int i = 0; i < 4; i++)
 		{
+			System.out.println();
 			//sample the training set
 			Examples temp = StratifiedSampling(train_examples, 25);
 
@@ -768,6 +787,8 @@ public class BayesClassifier
 			count++;
 			min = Min(min, accuracy);
 			max = Max(max, accuracy);
+			cpts = null;
+			cpts_index = 0;
 		}
 		//find average of all 10 tree accuracies
 		average = (double)sum/(double)count;
@@ -787,6 +808,7 @@ public class BayesClassifier
 		//training size trees of 50
 		for(int i = 0; i < 4; i++)
 		{
+			System.out.println();
 			//sample the training set
 			Examples temp = StratifiedSampling(train_examples, 50);
 
@@ -802,6 +824,8 @@ public class BayesClassifier
 			count++;
 			min = Min(min, accuracy);
 			max = Max(max, accuracy);
+			cpts = null;
+			cpts_index = 0;
 		}
 		//find average of all 10 tree accuracies
 		average = (double)sum/(double)count;
@@ -821,6 +845,7 @@ public class BayesClassifier
 		//training size trees of 50
 		for(int i = 0; i < 4; i++)
 		{
+			System.out.println();
 			//sample the training set
 			Examples temp = StratifiedSampling(train_examples, 100);
 
@@ -836,6 +861,8 @@ public class BayesClassifier
 			count++;
 			min = Min(min, accuracy);
 			max = Max(max, accuracy);
+			cpts = null;
+			cpts_index = 0;
 		}
 		//find average of all 10 tree accuracies
 		average = (double)sum/(double)count;
