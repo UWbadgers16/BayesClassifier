@@ -3,8 +3,14 @@ import java.text.DecimalFormat;
 
 
 //bayes classifier class
-public class BayesClassifier {
-
+public class BayesClassifier 
+{
+	static CPT[] cpts = null;
+	static int cpt_index = 0;
+	static Examples train_examples = null;
+	static Attributes train_attributes = null;
+	static String first_class_value = null, second_class_value = null;
+	
 	public static void main(String[] args) 
 	{
 		try
@@ -30,20 +36,20 @@ public class BayesClassifier {
 					test_parser.ParseFile();
 
 					//get list of attributes
-					Attributes train_attributes = train_parser.GetAttributes();
+					train_attributes = train_parser.GetAttributes();
 
 					//get training and test examples
-					Examples train_examples = train_parser.GetExamples();
+					train_examples = train_parser.GetExamples();
 					Examples test_examples = test_parser.GetExamples();
 
 					//get class values
-					String first_class_value = train_parser.GetFirstClassValue();
-					String second_class_value = train_parser.GetSecondClassValue();
+					first_class_value = train_parser.GetFirstClassValue();
+					second_class_value = train_parser.GetSecondClassValue();
 
 					if(type.equals("n"))
-						NaiveBayes(train_attributes, train_examples, test_examples, first_class_value, second_class_value);
+						NaiveBayes(test_examples);
 					else if(type.equals("t"))
-						TanBayes(train_attributes, train_examples, test_examples, first_class_value, second_class_value);
+						TanBayes(test_examples);
 					else
 						System.out.println("Enter 'n' for naive Bayes or 't' for TAN Bayes");
 				}
@@ -66,7 +72,7 @@ public class BayesClassifier {
 		}
 	}
 
-	public static void NaiveBayes(Attributes train_attributes, Examples train_examples, Examples test_examples, String first_class_value, String second_class_value)
+	private static void NaiveBayes(Examples test_examples)
 	{
 		Attribute attributes_walker = train_attributes.GetAttributesHead();
 		while(attributes_walker != null)
@@ -90,8 +96,8 @@ public class BayesClassifier {
 			value_walker = examples_walker.GetValuesHead();
 			while(value_walker != null)
 			{
-				first_cond_prob *= GetConditionalProbablity(train_examples, value_walker, null, null, first_class_value, 1);
-				second_cond_prob *= GetConditionalProbablity(train_examples, value_walker, null, null, second_class_value, 1);
+				first_cond_prob *= GetConditionalProbablity(value_walker, null, null, null, first_class_value, 1);
+				second_cond_prob *= GetConditionalProbablity(value_walker, null, null, null, second_class_value, 1);
 
 				value_walker = value_walker.GetNext();
 			}
@@ -118,8 +124,9 @@ public class BayesClassifier {
 		System.out.println(correct);
 	}
 
-	public static void TanBayes(Attributes train_attributes, Examples train_examples, Examples test_examples, String first_class_value, String second_class_value)
+	private static void TanBayes(Examples test_examples)
 	{
+		cpts = new CPT[train_attributes.GetAttributesCount()];
 		Attribute attribute_walker = train_attributes.GetAttributesHead();
 		BayesNode[] tan_nodes = new BayesNode[train_attributes.GetAttributesCount()];
 		int index = 0;
@@ -127,6 +134,7 @@ public class BayesClassifier {
 		while(attribute_walker != null)
 		{
 			BayesNode tan_node = new BayesNode();
+			tan_node.type = BayesNode.Type.ATTRIBUTE;
 			tan_node.SetAttribute(attribute_walker);
 			tan_nodes[index] = tan_node;
 			index++;
@@ -144,16 +152,100 @@ public class BayesClassifier {
 					if(i == j)
 						mutual_info = -1.0;
 					else
-						mutual_info = MutualInformation(train_examples, tan_nodes[i].GetAttribute(), tan_nodes[j].GetAttribute(), first_class_value, second_class_value);
+						mutual_info = MutualInformation(tan_nodes[i].GetAttribute(), tan_nodes[j].GetAttribute());
 					Edge temp = new Edge(mutual_info, tan_nodes[i], tan_nodes[j]);
 					tan_nodes[i].GetEdges().AddEdge(temp);
 				}
 			}
 		}
 		
-		BayesNode root = PrimMST(train_attributes, tan_nodes);
-		PrintTree(root, 0);
+		BayesNode root = PrimMST(tan_nodes);
+		BayesNode class_node = new BayesNode();
+		class_node.type = BayesNode.Type.CLASS;
+		//ConnectClass(root, class_node);
+		GetCPTs(root, null);
+		System.out.println();
 	}
+	
+	private static void GetCPTs(BayesNode tan_node, BayesNode parent)
+	{
+		CPT cpt = null;
+		int index = 0;
+		Feature tan_node_walker = tan_node.GetAttribute().GetFeaturesHead();
+		
+		if(parent == null)
+		{
+			cpt = new CPT(tan_node.GetAttribute(), tan_node.GetAttribute().GetFeatureCount() * 2);
+			
+			while(tan_node_walker != null)
+			{
+				String class_value = first_class_value;
+				for(int i = 0; i < 2; i++)
+				{
+					CPTEntry cpt_entry = new CPTEntry(tan_node_walker, null, class_value, GetConditionalProbablity(null, null, tan_node_walker, null, class_value, 3));
+					cpt_entry.type = CPTEntry.Type.NO_PARENT;
+					cpt.AddEntry(cpt_entry, index);
+					index++;
+					class_value = second_class_value;
+				}
+				
+				tan_node_walker = tan_node_walker.GetNext();
+			}
+		}
+		else
+		{
+			cpt = new CPT(tan_node.GetAttribute(), tan_node.GetAttribute().GetFeatureCount() * parent.GetAttribute().GetFeatureCount() * 2);
+			
+			while(tan_node_walker != null)
+			{
+				Feature parent_walker = parent.GetAttribute().GetFeaturesHead();
+				
+				while(parent_walker != null)
+				{
+					String class_value = first_class_value;
+					for(int i = 0; i < 2; i++)
+					{
+						CPTEntry cpt_entry = new CPTEntry(tan_node_walker, parent_walker, class_value, GetConditionalProbablity(null, null, tan_node_walker, parent_walker, class_value, 4));
+						cpt_entry.type = CPTEntry.Type.PARENT;
+						cpt.AddEntry(cpt_entry, index);
+						index++;
+						class_value = second_class_value;
+					}
+					
+					parent_walker = parent_walker.GetNext();
+				}
+				
+				tan_node_walker = tan_node_walker.GetNext();
+			}
+		}
+		
+		cpts[cpt_index] = cpt;
+		cpt_index++;
+		
+		Edge edge_walker = tan_node.GetEdges().GetEdgesHead();
+		
+		while(edge_walker != null)
+		{
+			GetCPTs(edge_walker.GetChild(), tan_node);
+			edge_walker = edge_walker.GetNext();
+		}
+	}
+	
+	private static void ConnectClass(BayesNode root, BayesNode class_node)
+	{
+		Edge edge_walker = root.GetEdges().GetEdgesHead();
+		
+		while(edge_walker != null)
+		{
+			ConnectClass(edge_walker.GetChild(), class_node);
+			edge_walker = edge_walker.GetNext();
+		}
+		
+		Edge edge = new Edge(0, class_node, root);
+		root.GetEdges().AddEdge(edge);
+		class_node.GetEdges().AddEdge(edge);
+	}
+	
 	private static void PrintTree(BayesNode root, int level)
 	{
 		for(int j = 0; j < level; j++)
@@ -170,6 +262,7 @@ public class BayesClassifier {
 			edge_walker = edge_walker.GetNext();
 		}
 	}
+	
 	private static int GetID(String attribute)
 	{
 		int id = 0;
@@ -234,9 +327,8 @@ public class BayesClassifier {
 		return id;
 	}
 	
-	public static BayesNode PrimMST(Attributes train_attributes, BayesNode[] tan_nodes)
+	private static BayesNode PrimMST(BayesNode[] tan_nodes)
 	{
-		BayesNode root = null;
 		Edge max_edge = null;
 		double max = -1.0;
 		Edge[] edges = new Edge[train_attributes.GetAttributesCount() - 1];
@@ -271,10 +363,11 @@ public class BayesClassifier {
 		return MakeTree(vertices_list[0], edges);
 	}
 	
-	public static BayesNode MakeTree(BayesNode node, Edge[] edges)
+	private static BayesNode MakeTree(BayesNode node, Edge[] edges)
 	{
 		BayesNode root = null;
 		root = new BayesNode();
+		root.type = BayesNode.Type.ATTRIBUTE;
 		root.SetAttribute(node.GetAttribute());
 		
 		for(int i = 0; i < edges.length; i++)
@@ -289,7 +382,7 @@ public class BayesClassifier {
 		return root;
 	}
 	
-	public static boolean ContainsVertex(BayesNode[] vertices, BayesNode vertex)
+	private static boolean ContainsVertex(BayesNode[] vertices, BayesNode vertex)
 	{
 		for(int i = 0; i < vertices.length; i++)
 		{
@@ -300,10 +393,10 @@ public class BayesClassifier {
 		return false;
 	}
 	
-	public static double MutualInformation(Examples train_examples, Attribute one, Attribute two, String first_class_value, String second_class_value)
+	private static double MutualInformation(Attribute one, Attribute two)
 	{
 		double mutual_information = 0, joint_prob = 0, joint_cond = 0, cond_one = 0, cond_two = 0;
-		int count = 0, joint_count = 0;
+		int joint_count = 0;
 		Feature feature_one = one.GetFeaturesHead();
 
 		while(feature_one != null)
@@ -348,9 +441,9 @@ public class BayesClassifier {
 						}
 
 						joint_prob = LaplaceEstimate(joint_count, train_examples.GetExamplesCount(), one.GetFeatureCount() * two.GetFeatureCount() * 2);
-						joint_cond = GetConditionalProbablity(train_examples, null, feature_one, feature_two, class_value, 2);
-						cond_one = GetConditionalProbablity(train_examples, null, feature_one, null, class_value, 3);
-						cond_two = GetConditionalProbablity(train_examples, null, feature_two, null, class_value, 3);
+						joint_cond = GetConditionalProbablity(null, null, feature_one, feature_two, class_value, 2);
+						cond_one = GetConditionalProbablity(null, null, feature_one, null, class_value, 3);
+						cond_two = GetConditionalProbablity(null, null, feature_two, null, class_value, 3);
 						
 						mutual_information += joint_prob * Log2(joint_cond/(cond_one * cond_two));
 						
@@ -367,8 +460,9 @@ public class BayesClassifier {
 		
 		return mutual_information;
 	}
+	
 
-	public static double GetConditionalProbablity(Examples train_examples, Value value, Feature one, Feature two, String class_value, int number)
+	public static double GetConditionalProbablity(Value value_one, Value value_two, Feature one, Feature two, String class_value, int number)
 	{
 		int instances = 0, total = 0;
 		double laplace_estimate = 0;
@@ -383,12 +477,12 @@ public class BayesClassifier {
 				{
 					Value value_walker = example_walker.GetValuesHead();
 
-					while(!value_walker.GetAttribute().AttributeName().equals(value.GetAttribute().AttributeName()))
+					while(!value_walker.GetAttribute().AttributeName().equals(value_one.GetAttribute().AttributeName()))
 					{
 						value_walker = value_walker.GetNext();
 					}
 
-					if(value_walker.GetValue().equals(value.GetValue()))
+					if(value_walker.GetValue().equals(value_one.GetValue()))
 						instances++;
 
 					total++;
@@ -397,7 +491,7 @@ public class BayesClassifier {
 				example_walker = example_walker.GetNext();
 			}
 
-			laplace_estimate = LaplaceEstimate(instances, total, value.GetAttribute().GetFeatureCount());
+			laplace_estimate = LaplaceEstimate(instances, total, value_one.GetAttribute().GetFeatureCount());
 		}
 		else if(number == 2)
 		{
@@ -458,6 +552,39 @@ public class BayesClassifier {
 
 			laplace_estimate = LaplaceEstimate(instances, total, one.GetAttribute().GetFeatureCount());
 		}
+		else if(number == 4)
+		{
+			while(example_walker != null)
+			{
+				if(example_walker.GetClassValue().equals(class_value))
+				{
+					Value value_walker = example_walker.GetValuesHead();
+
+					while(!value_walker.GetAttribute().AttributeName().equals(two.GetAttribute().AttributeName()))
+					{
+						value_walker = value_walker.GetNext();
+					}
+					
+					if(value_walker.GetValue().equals(two.GetFeature()))
+					{
+						value_walker = example_walker.GetValuesHead();
+
+						while(!value_walker.GetAttribute().AttributeName().equals(one.GetAttribute().AttributeName()))
+						{
+							value_walker = value_walker.GetNext();
+						}
+
+						if(value_walker.GetValue().equals(one.GetFeature()))
+							instances++;
+
+						total++;
+					}
+				}
+				example_walker = example_walker.GetNext();
+			}
+			
+			laplace_estimate = LaplaceEstimate(instances, total, one.GetAttribute().GetFeatureCount());
+		}
 		
 		return laplace_estimate;
 	}
@@ -468,6 +595,7 @@ public class BayesClassifier {
 	}
 	
 	//computes log2 of a value
+	
 	private static double Log2(double input)
 	{
 		if(input == 0)

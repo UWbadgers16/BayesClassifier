@@ -9,11 +9,12 @@ public class BayesNode
 	private int first_class_value = 0;
 	private int second_class_value = 0;
 	private String class_value = null;
+	public Type type;
 	
 	//type enumeration
 	public enum Type
 	{
-		ATTRIBUTE, FEATURE, CLASS_VALUE
+		ATTRIBUTE, CLASS
 	}
 	
 	//constructor sets number of edges
@@ -68,18 +69,6 @@ public class BayesNode
 	public void SetAttribute(Attribute attribute)
 	{
 		this.attribute = attribute;
-	}
-	
-	//get feature
-	public Feature GetFeature()
-	{
-		return feature;
-	}
-	
-	//set feature
-	public void SetFeature(Feature feature)
-	{
-		this.feature = feature;
 	}
 	
 	//get parent node
