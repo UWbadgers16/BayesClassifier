@@ -1,4 +1,5 @@
 import java.io.File;
+import java.text.DecimalFormat;
 
 
 //bayes classifier class
@@ -150,9 +151,155 @@ public class BayesClassifier {
 			}
 		}
 		
-		System.out.println("DONE");
+		BayesNode root = PrimMST(train_attributes, tan_nodes);
+		PrintTree(root, 0);
 	}
-
+	private static void PrintTree(BayesNode root, int level)
+	{
+		for(int j = 0; j < level; j++)
+		{
+			System.out.print("|\t");
+		}
+		System.out.println(GetID(root.GetAttribute().AttributeName()));
+		
+		Edge edge_walker = root.GetEdges().GetEdgesHead();
+		
+		while(edge_walker != null)
+		{
+			PrintTree(edge_walker.GetChild(), level + 1);
+			edge_walker = edge_walker.GetNext();
+		}
+	}
+	private static int GetID(String attribute)
+	{
+		int id = 0;
+		switch(attribute)
+		{
+		case "lymphatics":
+			id = 0;
+			break;
+		case "block_of_affere":
+			id = 1;
+			break;
+		case "bl_of_lymph_c":
+			id = 2;
+			break;
+		case "bl_of_lymph_s":
+			id = 3;
+			break;
+		case "by_pass":
+			id = 4;
+			break;
+		case "extravasates":
+			id = 5;
+			break;
+		case "regeneration_of":
+			id = 6;
+			break;
+		case "early_uptake_in":
+			id = 7;
+			break;
+		case "lym_nodes_dimin":
+			id = 8;
+			break;
+		case "lym_nodes_enlar":
+			id = 9;
+			break;
+		case "changes_in_lym":
+			id = 10;
+			break;
+		case "defect_in_node":
+			id = 11;
+			break;
+		case "changes_in_node":
+			id = 12;
+			break;
+		case "changes_in_stru":
+			id = 13;
+			break;
+		case "special_forms":
+			id = 14;
+			break;
+		case "dislocation_of":
+			id = 15;
+			break;
+		case "exclusion_of_no":
+			id = 16;
+			break;
+		case "no_of_nodes_in":
+			id = 17;
+			break;			
+		}
+		
+		return id;
+	}
+	
+	public static BayesNode PrimMST(Attributes train_attributes, BayesNode[] tan_nodes)
+	{
+		BayesNode root = null;
+		Edge max_edge = null;
+		double max = -1.0;
+		Edge[] edges = new Edge[train_attributes.GetAttributesCount() - 1];
+		BayesNode[] vertices_list = new BayesNode[train_attributes.GetAttributesCount()];
+		vertices_list[0] = tan_nodes[0];
+		int vertices = 1;
+		
+		for(int i = 0; i < edges.length; i++)
+		{
+			for(int j = 0; j < vertices; j++)
+			{
+				Edge edge_walker = vertices_list[j].GetEdges().GetEdgesHead();
+				
+				while(edge_walker != null)
+				{
+					if(edge_walker.GetMutualInformation() > max && !ContainsVertex(vertices_list, edge_walker.GetChild()))
+					{
+						max = edge_walker.GetMutualInformation();
+						max_edge = edge_walker;
+					}
+					
+					edge_walker = edge_walker.GetNext();
+				}
+			}
+			
+			edges[i] = max_edge;
+			vertices_list[vertices] = max_edge.GetChild();
+			vertices++;
+			max = -1.0;
+		}
+		
+		return MakeTree(vertices_list[0], edges);
+	}
+	
+	public static BayesNode MakeTree(BayesNode node, Edge[] edges)
+	{
+		BayesNode root = null;
+		root = new BayesNode();
+		root.SetAttribute(node.GetAttribute());
+		
+		for(int i = 0; i < edges.length; i++)
+		{
+			if(edges[i].GetParent().equals(node))
+			{
+				Edge temp = new Edge(edges[i].GetMutualInformation(), node, MakeTree(edges[i].GetChild(), edges));
+				root.GetEdges().AddEdge(temp);
+			}
+		}
+		
+		return root;
+	}
+	
+	public static boolean ContainsVertex(BayesNode[] vertices, BayesNode vertex)
+	{
+		for(int i = 0; i < vertices.length; i++)
+		{
+			if(vertex.equals(vertices[i]))
+				return true;
+		}
+		
+		return false;
+	}
+	
 	public static double MutualInformation(Examples train_examples, Attribute one, Attribute two, String first_class_value, String second_class_value)
 	{
 		double mutual_information = 0, joint_prob = 0, joint_cond = 0, cond_one = 0, cond_two = 0;

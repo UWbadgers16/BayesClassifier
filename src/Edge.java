@@ -7,7 +7,7 @@ public class Edge
 	private double mutual_information = 0;
 	private BayesNode parent = null, child = null;
 	
-	public Edge(double mutual_information, BayesNode parents, BayesNode child)
+	public Edge(double mutual_information, BayesNode parent, BayesNode child)
 	{
 		this.mutual_information = mutual_information;
 		this.parent = parent;

@@ -71,19 +71,19 @@ public class Edges
 	}
 	
 	//get count of attributes
-	public int GetAttributesCount()
+	public int GetEdgesCount()
 	{
 		return edges_count;
 	}
 	
 	//get first attribute
-	public Edge GetAttributesHead()
+	public Edge GetEdgesHead()
 	{
 		return edges_head;
 	}
 
 	//get last attribute
-	public Edge GetAttributesTail()
+	public Edge GetEdgesTail()
 	{
 		return edges_tail;
 	}
