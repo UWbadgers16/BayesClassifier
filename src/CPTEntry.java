@@ -6,13 +6,6 @@ public class CPTEntry
 	Feature parent_feature = null;
 	String class_value = null;
 	double probability = 0;
-	public Type type;
-	
-	//type enumeration
-	public enum Type
-	{
-		NO_PARENT, PARENT
-	}
 	
 	public CPTEntry(Feature this_feature, Feature parent_feature, String class_value, double probability)
 	{
@@ -22,7 +15,7 @@ public class CPTEntry
 		this.probability = probability;
 	}
 	
-	public Feature GetThisAttribute()
+	public Feature GetThisFeature()
 	{
 		return this_feature;
 	}
