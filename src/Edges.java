@@ -24,6 +24,21 @@ public class Edges
 		edges_count++;
 	}
 	
+	public boolean EdgeExists(BayesNode child)
+	{
+		Edge edge_walker = edges_head;
+		
+		while(edge_walker != null)
+		{
+			if(edge_walker.GetChild().equals(child))
+				return true;
+			
+			edge_walker = edge_walker.GetNext();
+		}
+		
+		return false;
+	}
+	
 	public void RemoveEdge(Edge edge)
 	{
 		Edge edge_walker = edges_head;
